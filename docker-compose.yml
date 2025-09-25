@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: farmer-assistant-db
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: farmer-assistant
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - farmer-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: farmer-assistant-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      MONGODB_URI: mongodb://mongodb:27017/farmer-assistant
+      ML_API_URL: http://ml-api:8000
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+      - ml-api
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - farmer-network
+
+  # ML API Service
+  ml-api:
+    build:
+      context: ./ml-api
+      dockerfile: Dockerfile
+    container_name: farmer-assistant-ml
+    restart: unless-stopped
+    environment:
+      PORT: 8000
+      ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ml-api:/app
+    networks:
+      - farmer-network
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: farmer-assistant-frontend
+    restart: unless-stopped
+    environment:
+      REACT_APP_API_URL: http://localhost:5000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - farmer-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  farmer-network:
+    driver: bridge
