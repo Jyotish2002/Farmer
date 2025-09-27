@@ -19,7 +19,7 @@ const Login = () => {
   }, [isAuthenticated, loading, navigate, location]);
 
   const handleGoogleLogin = () => {
-    window.location.href = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/auth/google`;
+    window.location.href = `${process.env.REACT_APP_API_URL || 'https://farmer-1-4wja.onrender.com'}/auth/google`;
   };
 
   const handleDemoLogin = () => {
