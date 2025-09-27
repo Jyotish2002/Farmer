@@ -4,8 +4,11 @@ const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Determine whether to require auth for weather (allow public in dev or when PUBLIC_WEATHER=true)
+const requireWeatherAuth = (process.env.PUBLIC_WEATHER === 'true') ? ((req, res, next) => next()) : verifyToken;
+
 // Get weather data for a location
-router.get('/', verifyToken, async (req, res) => {
+router.get('/', requireWeatherAuth, async (req, res) => {
   try {
     const { lat, lon, city } = req.query;
 
@@ -69,7 +72,7 @@ router.get('/', verifyToken, async (req, res) => {
 });
 
 // Get 5-day weather forecast
-router.get('/forecast', verifyToken, async (req, res) => {
+router.get('/forecast', requireWeatherAuth, async (req, res) => {
   try {
     const { lat, lon, city } = req.query;
 

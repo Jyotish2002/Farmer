@@ -119,9 +119,10 @@ const translations = {
     demoLogin: 'Demo Login',
     loginSubtitle: 'Your smart farming companion for better yields',
     
-    // Crop Recommendation
-    cropRecommendation: 'Crop Recommendation',
-    soilPh: 'Soil pH',
+  // Crop Recommendation
+  cropRecommendation: 'Crop Recommendation',
+  soilType: 'Soil type',
+  soilPh: 'Soil pH',
     temperatureInput: 'Temperature (°C)',
     rainfallInput: 'Rainfall (mm)',
     getRecommendation: 'Get Recommendation',
@@ -152,6 +153,19 @@ const translations = {
     diseaseIdentified: 'Disease Identified',
     recommendations: 'Recommendations',
     severity: 'Severity',
+  // Camera & upload
+  useCamera: 'Use camera',
+  capturePhoto: 'Capture Photo',
+  stopCamera: 'Stop camera',
+  cameraNotSupported: 'Camera not supported on this device',
+  cameraPermissionDenied: 'Camera access denied',
+  camera_help_title: 'Camera unavailable',
+  camera_help_text: 'This device/browser does not allow camera access. Please ensure you are using a supported browser, served over HTTPS or localhost, and grant camera permission when prompted.',
+  camera_try_again: 'Try camera again',
+  camera_fallback_upload: 'Use upload instead',
+  camera_diagnostic: 'Run camera diagnostic',
+  camera_diagnostic_title: 'Camera diagnostic result',
+  camera_diagnostic_checklist: 'Checks: getUserMedia, permissions, secure origin',
     
     // Common Actions
     analyzing: 'Analyzing...',
@@ -167,7 +181,16 @@ const translations = {
     enterRainfall: 'Enter annual rainfall in mm',
     recommendationGenerated: 'Crop recommendation generated!',
     failedToGetRecommendation: 'Failed to get crop recommendation. Please try again.',
-    alternativeCrops: 'Alternative crops',
+  alternativeCrops: 'Alternative crops',
+  // Soil types
+  soil_clay_label: 'Clay Soil',
+  soil_clay_desc: 'Heavy, sticky when wet, holds water and nutrients well but may drain slowly.',
+  soil_loamy_label: 'Loamy Soil',
+  soil_loamy_desc: 'Balanced texture; best for most crops with good drainage and fertility.',
+  soil_sandy_label: 'Sandy Soil',
+  soil_sandy_desc: 'Coarse texture, excellent drainage, low water and nutrient retention.',
+  soil_silt_label: 'Silt Soil',
+  soil_silt_desc: 'Smooth texture, retains moisture better than sand and is fertile.',
     
     // Yield Prediction Page
     farmArea: 'Farm Area (Hectares)',
@@ -408,7 +431,16 @@ const translations = {
     
     // Crop Recommendation Page
     cropRecommendation: 'വിള ശുപാർശ',
-    aiCropRecommendationDesc: 'മണ്ണിന്റെയും കാലാവസ്ഥയുടെയും അടിസ്ഥാനത്തിൽ AI-പവർഡ് വിള ശുപാർശകൾ നേടുക',
+  aiCropRecommendationDesc: 'മണ്ണിന്റെയും കാലാവസ്ഥയുടെയും അടിസ്ഥാനത്തിൽ AI-പവർഡ് വിള ശുപാർശകൾ നേടുക',
+  soilType: 'മണ്ണ് തരം',
+  soil_clay_label: 'ക്ലേ (ചതിയ) മണ്ണ്',
+  soil_clay_desc: 'ഭാരം കൂടിയ, വരൾച്ചയിൽ ഒട്ടുന്നതു പോലുള്ള ഘടന; നനവ് സംരക്ഷിക്കുന്നു പക്ഷെ വെള്ളം മുറുകി ചെന്ന് പോകാം.',
+  soil_loamy_label: 'ലോയമി മണ്ണ്',
+  soil_loamy_desc: 'സന്തുലിത ഘടന; നല്ല ദ്രാവകതയും ഉദ്പാദന ശേഷിയുമുള്ളതായുള്ളത്.',
+  soil_sandy_label: 'മണം മണൽ (സാൻഡി) മണ്ണ്',
+  soil_sandy_desc: 'തെളിയുള്ള ഘടന, വേഗത്തിൽ വെള്ളം ഒഴുകും, ജലവും പോഷകങ്ങളും കുറവാണ്.',
+  soil_silt_label: 'സിൽട്ട് മണ്ണ്',
+  soil_silt_desc: 'നർമ്മമായ ഘടന, മണൽ보다 നന്നായി ജലം സൂക്ഷിക്കുന്നു, ഫർട്ടൈൽ ആണ്.',
     enterSoilPh: 'മണ്ണിന്റെ pH മൂല്യം നൽകുക (0-14)',
     enterTemperature: 'സെൽഷ്യസിൽ താപനില നൽകുക',
     enterRainfall: 'വാർഷിക മഴയുടെ അളവ് mm-ൽ നൽകുക',
@@ -577,7 +609,16 @@ const translations = {
     
     // Crop Recommendation Page
     cropRecommendation: 'फसल सुझाव',
-    aiCropRecommendationDesc: 'मिट्टी और मौसम की स्थिति के आधार पर AI-संचालित फसल सुझाव प्राप्त करें',
+  aiCropRecommendationDesc: 'मिट्टी और मौसम की स्थिति के आधार पर AI-संचालित फसल सुझाव प्राप्त करें',
+  soilType: 'मिट्टी का प्रकार',
+  soil_clay_label: 'क्ले (मिट्टी)',
+  soil_clay_desc: 'भारी, गीला होने पर चिपचिपा, पानी और पोषक तत्वों को अच्छी तरह से रोकता है लेकिन ड्रेनेज धीमा हो सकता है।',
+  soil_loamy_label: 'लोअमी मिट्टी',
+  soil_loamy_desc: 'संतुलित बनावट; अधिकांश फसलों के लिए उपयुक्त, अच्छी ड्रेनेज और उर्वरकता।',
+  soil_sandy_label: 'रेतीली मिट्टी',
+  soil_sandy_desc: 'मोटी बनावट, उत्कृष्ट ड्रेनेज, पानी और पोषक तत्व कम रखते हैं।',
+  soil_silt_label: 'सिल्ट मिट्टी',
+  soil_silt_desc: 'मुलायम बनावट, रेत से बेहतर नमी बनाए रखता है और उर्वरक है।',
     enterSoilPh: 'मिट्टी का pH मान दर्ज करें (0-14)',
     enterTemperature: 'सेल्सियस में तापमान दर्ज करें',
     enterRainfall: 'mm में वार्षिक वर्षा दर्ज करें',

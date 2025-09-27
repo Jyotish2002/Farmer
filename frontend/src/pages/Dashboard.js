@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,17 +27,36 @@ const Dashboard = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [weather, setWeather] = useState(null);
+  const [coords, setCoords] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showWeatherModal, setShowWeatherModal] = useState(false);
   const [weatherForecast, setWeatherForecast] = useState(null);
   const [loadingForecast, setLoadingForecast] = useState(false);
+  const [liveTracking, setLiveTracking] = useState(false);
+  const watchIdRef = useRef(null);
+  const lastCoordsRef = useRef(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const isDemoMode = token === 'demo-jwt-token-123';
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
+
+        // Try to get browser geolocation first (prompts user)
+        if (!isDemoMode && navigator?.geolocation) {
+          try {
+            const position = await new Promise((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 8000 });
+            });
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            setCoords({ lat, lon });
+          } catch (err) {
+            console.warn('Geolocation unavailable or denied, falling back to profile/city', err);
+          }
+        }
 
         // Skip API calls in demo mode
         if (isDemoMode) {
@@ -83,9 +102,9 @@ const Dashboard = () => {
 
         // Fetch weather data (using default location for demo)
         try {
-          const weatherResponse = await axios.get('/api/weather', {
-            params: { city: user?.location || 'Kolkata' }
-          });
+          // Use coords if available, otherwise fallback to city
+          const params = coords ? { lat: coords.lat, lon: coords.lon } : { city: user?.location || 'Kolkata' };
+          const weatherResponse = await axios.get('/api/weather', { params });
           setWeather(weatherResponse.data);
         } catch (error) {
           console.error('Weather fetch failed:', error);
@@ -108,79 +127,9 @@ const Dashboard = () => {
     };
 
     loadData();
-  }, [isDemoMode, user?.location, t]);
+  }, [isDemoMode, user?.location, t, coords]);
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-
-      // Skip API calls in demo mode
-      if (isDemoMode) {
-        // Set demo data
-        setWeather({
-          location: { name: 'Kolkata', country: 'IN' },
-          weather: { main: 'Clear', description: 'sunny', icon: '01d' },
-          temperature: { current: 28, feels_like: 30, min: 22, max: 35 },
-          humidity: 65,
-          pressure: 1013,
-          wind: { speed: 3.5, direction: 90 },
-          visibility: 10000,
-          clouds: 20,
-          timestamp: Date.now()
-        });
-
-        setNotifications([
-          {
-            _id: 'demo-1',
-            title: 'Weather Advisory: Clear Skies Expected',
-            content: 'Favorable weather conditions for farming activities. Good time for irrigation and field preparation.',
-            type: 'advisory',
-            priority: 'medium',
-            category: 'weather',
-            postedBy: { name: 'Weather Department', role: 'admin' },
-            createdAt: new Date().toISOString()
-          },
-          {
-            _id: 'demo-2',
-            title: 'New Fertilizer Subsidy Scheme',
-            content: 'Government announces new subsidy scheme for organic fertilizers. Apply before month end.',
-            type: 'notification',
-            priority: 'high',
-            category: 'policy',
-            postedBy: { name: 'Agriculture Department', role: 'admin' },
-            createdAt: new Date().toISOString()
-          }
-        ]);
-
-        setLoading(false);
-        return;
-      }
-
-      // Fetch weather data (using default location for demo)
-      try {
-        const weatherResponse = await axios.get('/api/weather', {
-          params: { city: user?.location || 'Kolkata' }
-        });
-        setWeather(weatherResponse.data);
-      } catch (error) {
-        console.error('Weather fetch failed:', error);
-      }
-
-      // Fetch notifications
-      try {
-        const notificationsResponse = await axios.get('/api/notifications');
-        setNotifications(notificationsResponse.data.notifications.slice(0, 5));
-      } catch (error) {
-        console.error('Notifications fetch failed:', error);
-      }
-
-    } catch (error) {
-      console.error('Dashboard data fetch failed:', error);
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // fetchDashboardData removed: loadData inside useEffect handles initial loading
 
 
 
@@ -249,9 +198,8 @@ const Dashboard = () => {
           ]
         });
       } else {
-        const response = await axios.get('/api/weather/forecast', {
-          params: { city: user?.location || 'Kolkata' }
-        });
+        const params = coords ? { lat: coords.lat, lon: coords.lon } : { city: user?.location || 'Kolkata' };
+        const response = await axios.get('/api/weather/forecast', { params });
         setWeatherForecast(response.data);
       }
     } catch (error) {
@@ -266,6 +214,100 @@ const Dashboard = () => {
     setShowWeatherModal(true);
     if (!weatherForecast) {
       fetchWeatherForecast();
+    }
+  };
+
+  // Haversine - meters between two coords
+  const haversineMeters = (a, b) => {
+    if (!a || !b) return Infinity;
+    const toRad = (v) => (v * Math.PI) / 180;
+    const R = 6371000; // meters
+    const dLat = toRad(b.lat - a.lat);
+    const dLon = toRad(b.lon - a.lon);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const sinDlat = Math.sin(dLat / 2);
+    const sinDlon = Math.sin(dLon / 2);
+    const aa = sinDlat * sinDlat + Math.cos(lat1) * Math.cos(lat2) * sinDlon * sinDlon;
+    const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
+    return R * c;
+  };
+
+  // Start/stop watchPosition when liveTracking toggles
+  useEffect(() => {
+    if (isDemoMode) return;
+    if (!navigator?.geolocation) return;
+
+  if (liveTracking) {
+      // start watching
+      try {
+        const id = navigator.geolocation.watchPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const newCoords = { lat, lon };
+            const last = lastCoordsRef.current;
+            const meters = haversineMeters(last, newCoords);
+            // only update if moved significantly to avoid too many API calls
+            if (!last || meters > 100) {
+              lastCoordsRef.current = newCoords;
+              setCoords(newCoords);
+              setLastUpdated(Date.now());
+            }
+          },
+          (err) => {
+            console.warn('watchPosition error', err);
+            toast.error('Unable to track location live');
+          },
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        );
+        watchIdRef.current = id;
+      } catch (err) {
+        console.warn('Failed to start geolocation watch', err);
+      }
+  } else {
+      // stop watching
+      if (watchIdRef.current != null) {
+        try {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+        } catch (e) {}
+        watchIdRef.current = null;
+      }
+    }
+
+  return () => {
+      if (watchIdRef.current != null) {
+        try {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+        } catch (e) {}
+        watchIdRef.current = null;
+      }
+    };
+  }, [liveTracking, isDemoMode]);
+
+  // Update lastUpdated when coords is initially set (from getCurrentPosition)
+  useEffect(() => {
+    if (coords) setLastUpdated(Date.now());
+  }, [coords]);
+
+  // small time-ago formatter
+  const timeAgo = (ts) => {
+    if (!ts) return '';
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 10) return 'just now';
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  };
+
+  // show a toast when toggling live tracking to give instant feedback
+  const handleLiveToggle = (enabled) => {
+    setLiveTracking(enabled);
+    if (enabled) {
+      toast.success('Live location tracking enabled');
+    } else {
+      toast('Live location tracking paused');
     }
   };
 
@@ -341,18 +383,43 @@ const Dashboard = () => {
           className="bg-gradient-to-br from-blue-400 via-cyan-500 to-teal-600 rounded-xl shadow-xl p-1 cursor-pointer hover:shadow-2xl transition-all duration-300 transform hover:scale-105 mb-4"
           onClick={handleWeatherClick}
         >
-          <h3 className="text-base font-bold text-white mb-1 flex items-center justify-between drop-shadow-lg">
-            <div className="flex items-center">
-              <Cloud className="h-5 w-5 mr-2 text-yellow-300" />
-              {t('weatherReport')}
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-white mb-1 flex items-center drop-shadow-lg">
+              <div className="flex items-center">
+                <Cloud className="h-5 w-5 mr-2 text-yellow-300" />
+                {t('weatherReport')}
+              </div>
+            </h3>
+            <div className="flex items-center space-x-2">
+              <label className="text-xs text-blue-100 bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full font-medium flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={liveTracking}
+                  onChange={(e) => handleLiveToggle(e.target.checked)}
+                  className="form-checkbox h-4 w-4 text-green-500"
+                  title={t('liveLocationToggle')}
+                />
+                <span>{t('live')}</span>
+              </label>
+              <span className="text-xs text-blue-100 bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full font-medium">
+                {t('tapForForecast')}
+              </span>
             </div>
-            <span className="text-xs text-blue-100 bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full font-medium">
-              {t('tapForForecast')}
-            </span>
-          </h3>
+          </div>
 
           {weather ? (
             <div className="space-y-0.5">
+              <div className="flex items-center justify-between mb-1">
+                <div />
+                <div className="flex items-center space-x-3">
+                  {liveTracking && (
+                    <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full font-bold">LIVE</span>
+                  )}
+                  {lastUpdated && (
+                    <span className="text-xs text-white/90 bg-white/10 px-2 py-0.5 rounded-full">Updated {timeAgo(lastUpdated)}</span>
+                  )}
+                </div>
+              </div>
               <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg p-1">
                 {getWeatherIcon(weather.weather?.main)}
                 <div>

@@ -3,41 +3,46 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL || '/auth/google/callback'
-  },
-  async (accessToken, refreshToken, profile, done) => {
-    try {
-      // Check if user already exists
-      let user = await User.findOne({ googleId: profile.id });
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(new GoogleStrategy({
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: process.env.GOOGLE_CALLBACK_URL || '/auth/google/callback'
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        // Check if user already exists
+        let user = await User.findOne({ googleId: profile.id });
 
-      if (user) {
-        // Update user info if needed
-        user.name = profile.displayName;
-        user.email = profile.emails[0].value;
-        user.avatar = profile.photos[0].value;
+        if (user) {
+          // Update user info if needed
+          user.name = profile.displayName;
+          user.email = profile.emails[0].value;
+          user.avatar = profile.photos[0].value;
+          await user.save();
+          return done(null, user);
+        }
+
+        // Create new user
+        user = new User({
+          googleId: profile.id,
+          name: profile.displayName,
+          email: profile.emails[0].value,
+          avatar: profile.photos[0].value,
+          role: 'farmer' // Default role
+        });
+
         await user.save();
         return done(null, user);
+      } catch (error) {
+        return done(error, null);
       }
-
-      // Create new user
-      user = new User({
-        googleId: profile.id,
-        name: profile.displayName,
-        email: profile.emails[0].value,
-        avatar: profile.photos[0].value,
-        role: 'farmer' // Default role
-      });
-
-      await user.save();
-      return done(null, user);
-    } catch (error) {
-      return done(error, null);
     }
-  }
-));
+  ));
+} else {
+  // Don't crash the server when Google OAuth isn't configured (development)
+  console.warn('Google OAuth client ID/secret not configured — skipping GoogleStrategy registration');
+}
 
 // Serialize user for session
 passport.serializeUser((user, done) => {
