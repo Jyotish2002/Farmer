@@ -1,4 +1,4 @@
-# Farmer Assistant MERN Website
+# Farmer Assistant MERN Website - (Krishi Sahayi)
 
 A comprehensive full-stack MERN application designed to assist farmers with crop management, pest detection, yield prediction, and government advisories using AI and ML technologies.
 
