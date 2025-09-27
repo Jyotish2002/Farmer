@@ -14,7 +14,7 @@ A comprehensive full-stack MERN application designed to assist farmers with crop
 - Government notifications & advisories display
 
 ### Crop Recommendation
-- ML-based crop recommendation using soil pH, temperature, and rainfall data
+- ML-based crop recommendation using soil-type pH, temperature, and rainfall data
 - Python Flask/FastAPI backend for ML models
 
 ### Yield Prediction
@@ -22,9 +22,9 @@ A comprehensive full-stack MERN application designed to assist farmers with crop
 - Input: crop type, area, input cost
 
 ### Pest Detection
-- Image upload for crop/pest analysis
-- Gemini Vision API integration
-- Returns pest/disease name, cause, treatment, and prevention tips
+- **Specialized ML Detection**: User uploads a crop image for analysis by a custom-trained machine learning model (e.g., MobileNetV2) that accurately identifies the specific pest or disease.
+
+- **AI-Generated Solutions**: The identified disease name is then sent to the Google Gemini API, which returns a detailed action plan including the cause, treatment options, and prevention tips.
 
 ### AI Chatbot
 - Integrated chatbot in dashboard
