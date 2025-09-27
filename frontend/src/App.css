@@ -1,1 +1,66 @@
-/* Additional custom styles */
+/* Clean Mobile App Styles */
+
+/* Design tokens */
+:root {
+  --primary-500: #16a34a;
+  --primary-600: #15803d;
+  --accent: #06b6d4;
+  --card-bg: rgba(255,255,255,0.92);
+}
+
+/* Reset */
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0fdf4 0%, #f0f9ff 50%, #fffbeb 100%);
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+/* Safe area support for modern mobile devices */
+.safe-area-top { padding-top: env(safe-area-inset-top); }
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Mobile-first responsive utilities */
+.mobile-container { max-width: 100vw; min-height: 100vh; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+
+/* App-like scrolling */
+.app-scroll { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Global interaction tidy-ups */
+* { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
+button, a, .clickable { transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1); }
+@media (hover: none) and (pointer: coarse) { button:active, a:active, .clickable:active { transform: scale(0.98); } }
+
+/* Unified card component for consistent spacing */
+.app-card { background-color: var(--card-bg); border-radius: 1rem; padding: 1rem; box-shadow: 0 6px 18px rgba(2,6,23,0.06); border: 1px solid rgba(2,6,23,0.04); }
+.app-card-compact { padding: 0.75rem; border-radius: 0.75rem; }
+
+/* Focus styles */
+:focus { outline: none; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 3px; }
+
+/* Page transitions and animations */
+@keyframes app-pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.5 } }
+.app-pulse { animation: app-pulse 2s infinite; }
+
+/* Small helpers */
+.text-muted { color: rgba(0,0,0,0.55); }
+.small { font-size: 0.85rem; }
+
+/* Bottom safe area (space for bottom nav) */
+.bottom-safe-area { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+
+/* Tidy shadows */
+.soft-shadow { box-shadow: 0 6px 18px rgba(2,6,23,0.06); }
+
+/* Utility to visually join navbar and first card */
+.join-top { margin-top: -4px; border-top-left-radius: 0; border-top-right-radius: 0; }
+
+/* Prevent zoom on input focus on iOS */
+@media screen and (max-width: 767px) { input[type="text"], input[type="email"], input[type="password"], textarea, select { font-size: 16px !important; } }

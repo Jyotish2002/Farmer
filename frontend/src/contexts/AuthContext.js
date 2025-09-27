@@ -13,7 +13,11 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    // Initialize user from localStorage if available
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
 
@@ -62,6 +66,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setToken(null);
     setUser(null);
     delete axios.defaults.headers.common['Authorization'];
@@ -85,19 +90,13 @@ export const AuthProvider = ({ children }) => {
     setUser(demoUser);
     setToken(demoToken);
     localStorage.setItem('token', demoToken);
+    localStorage.setItem('user', JSON.stringify(demoUser));
     toast.success('Demo login successful!');
   };
 
-  const updateProfile = async (profileData) => {
-    try {
-      const response = await axios.put('/auth/profile', profileData);
-      setUser(response.data);
-      toast.success('Profile updated successfully');
-      return response.data;
-    } catch (error) {
-      toast.error('Failed to update profile');
-      throw error;
-    }
+  const updateUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const value = {
@@ -107,7 +106,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     demoLogin,
-    updateProfile,
+    updateUser,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin'
   };

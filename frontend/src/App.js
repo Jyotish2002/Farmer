@@ -9,6 +9,9 @@ import YieldPrediction from './pages/YieldPrediction';
 import PestDetection from './pages/PestDetection';
 import Chatbot from './pages/Chatbot';
 import AdminPanel from './pages/AdminPanel';
+import SettingsPage from './pages/SettingsPage';
+import BottomNavigation from './components/BottomNavigation';
+import TopNavbar from './components/TopNavbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -16,65 +19,77 @@ function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <TopNavbar />
+          <div className="flex-1 pb-20"> {/* Add padding bottom for bottom nav */}
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
 
-            {/* Protected Routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/crop-recommendation"
-              element={
-                <ProtectedRoute>
-                  <CropRecommendation />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/yield-prediction"
-              element={
-                <ProtectedRoute>
-                  <YieldPrediction />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pest-detection"
-              element={
-                <ProtectedRoute>
-                  <PestDetection />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/chatbot"
-              element={
-                <ProtectedRoute>
-                  <Chatbot />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminPanel />
-                </ProtectedRoute>
-              }
-            />
+              {/* Protected Routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/crop-recommendation"
+                element={
+                  <ProtectedRoute>
+                    <CropRecommendation />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/yield-prediction"
+                element={
+                  <ProtectedRoute>
+                    <YieldPrediction />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pest-detection"
+                element={
+                  <ProtectedRoute>
+                    <PestDetection />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <SettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/chatbot"
+                element={
+                  <ProtectedRoute>
+                    <Chatbot />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminPanel />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Default redirect */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+              {/* Default redirect */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </div>
+          <BottomNavigation />
         </div>
       </AuthProvider>
     </LanguageProvider>

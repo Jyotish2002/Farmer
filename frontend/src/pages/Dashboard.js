@@ -13,9 +13,6 @@ import {
   Eye,
   MessageSquare,
   Bot,
-  LogOut,
-  RefreshCw,
-  Globe,
   Bug,
   TrendingUp,
   TestTube,
@@ -26,8 +23,8 @@ import {
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
-  const { user, token, logout } = useAuth();
-  const { currentLanguage, changeLanguage, t, availableLanguages } = useLanguage();
+  const { user, token } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [weather, setWeather] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -187,17 +184,7 @@ const Dashboard = () => {
 
 
 
-  // Utility functions for mobile header
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-  const handleRefresh = () => {
-    setLoading(true);
-    fetchDashboardData();
-    toast.success(t('dashboardRefreshed'));
-  };
+  // Removed mobile header functions since we now use the main Navbar component
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -331,67 +318,10 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-yellow-50">
-    {/* Mobile Header */}
-<div className="bg-gradient-to-r from-green-600 to-green-700 shadow-lg border-b sticky top-0 z-10">
-  <div className="flex items-center justify-between px-4 py-3">
-
-    {/* Left: App Name + Logo */}
-    <div className="flex items-center space-x-2">
-      <div className="h-8 w-8 bg-yellow-400 rounded-lg flex items-center justify-center shadow-md">
-        <span className="text-green-800 font-bold text-sm">🌾</span>
-      </div>
-      <h1 className="text-base font-bold text-white">{t('appName')}</h1>
-    </div>
-
-    {/* Right: Language Selector + Refresh & Logout */}
-    <div className="flex items-center space-x-3">
-      {/* Language Selector */}
-      <div className="flex items-center space-x-2 bg-white/20 rounded-lg px-2 py-1">
-        <Globe className="h-5 w-5 text-yellow-300" />
-        <select
-          value={currentLanguage}
-          onChange={(e) => changeLanguage(e.target.value)}
-          className="text-sm bg-transparent text-white focus:outline-none border-none"
-          style={{ color: 'white' }}
-        >
-          {availableLanguages.map((lang) => (
-            <option 
-              key={lang.code} 
-              value={lang.code}
-              style={{ color: 'black', backgroundColor: 'white' }}
-            >
-              {lang.nativeName}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Refresh */}
-      <button
-        onClick={handleRefresh}
-        className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-all duration-200 shadow-md"
-        title={t('refresh')}
-      >
-        <RefreshCw className="h-5 w-5 text-yellow-300" />
-      </button>
-
-      {/* Logout */}
-      <button
-        onClick={handleLogout}
-        className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-all duration-200 shadow-md"
-        title={t('logout')}
-      >
-        <LogOut className="h-5 w-5 text-yellow-300" />
-      </button>
-    </div>
-  </div>
-</div>
-
-
-      <div className="px-4 py-4 space-y-4">
-        {/* Greeting Section */}
-        <div className="text-center bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 rounded-xl p-3 shadow-lg">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-yellow-50 bottom-safe-area app-scroll">
+  <div className="px-4 pt-0 pb-16"> {/* Let navbar occupy natural flow; removed manual top padding */}
+  {/* Greeting Section */}
+  <div className="text-center bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 rounded-xl p-3 shadow-lg mb-4 join-top app-card">
           <h2 className="text-xl font-bold text-white mb-1 drop-shadow-lg">
             {getGreeting()}, {user?.name?.split(' ')[0] || t('farmer')}! 🌱
           </h2>
@@ -408,32 +338,32 @@ const Dashboard = () => {
 
         {/* Weather Report Section */}
         <div 
-          className="bg-gradient-to-br from-blue-400 via-cyan-500 to-teal-600 rounded-xl shadow-xl p-2 cursor-pointer hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+          className="bg-gradient-to-br from-blue-400 via-cyan-500 to-teal-600 rounded-xl shadow-xl p-1 cursor-pointer hover:shadow-2xl transition-all duration-300 transform hover:scale-105 mb-4"
           onClick={handleWeatherClick}
         >
-          <h3 className="text-lg font-bold text-white mb-1 flex items-center justify-between drop-shadow-lg">
+          <h3 className="text-base font-bold text-white mb-1 flex items-center justify-between drop-shadow-lg">
             <div className="flex items-center">
-              <Cloud className="h-6 w-6 mr-3 text-yellow-300" />
+              <Cloud className="h-5 w-5 mr-2 text-yellow-300" />
               {t('weatherReport')}
             </div>
-            <span className="text-xs text-blue-100 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full font-medium">
+            <span className="text-xs text-blue-100 bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full font-medium">
               {t('tapForForecast')}
             </span>
           </h3>
 
           {weather ? (
-            <div className="space-y-1">
-              <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-lg p-1.5">
+            <div className="space-y-0.5">
+              <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg p-1">
                 {getWeatherIcon(weather.weather?.main)}
                 <div>
-                  <h4 className="font-bold text-white text-base">{weather.location?.name}</h4>
+                  <h4 className="font-bold text-white text-sm">{weather.location?.name}</h4>
                   <p className="text-blue-100 capitalize text-xs font-medium">{weather.weather?.description}</p>
-                  <p className="text-yellow-300 text-lg font-bold drop-shadow-lg">{Math.round(weather.temperature?.current)}°C</p>
+                  <p className="text-yellow-300 text-base font-bold drop-shadow-lg">{Math.round(weather.temperature?.current)}°C</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-1 pt-1 border-t border-white/20">
-                <div className="flex items-center space-x-1 bg-white/10 backdrop-blur-sm rounded-lg p-1.5">
+              <div className="grid grid-cols-2 gap-0.5 pt-0.5 border-t border-white/20">
+                <div className="flex items-center space-x-1 bg-white/10 backdrop-blur-sm rounded-lg p-1">
                   <Thermometer className="h-3 w-3 text-red-300" />
                   <div>
                     <p className="text-xs text-blue-100 font-medium">{t('feelsLike')}</p>
@@ -441,7 +371,7 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-1 bg-white/10 backdrop-blur-sm rounded-lg p-1.5">
+                <div className="flex items-center space-x-1 bg-white/10 backdrop-blur-sm rounded-lg p-1">
                   <Droplets className="h-3 w-3 text-cyan-300" />
                   <div>
                     <p className="text-xs text-blue-100 font-medium">{t('humidity')}</p>
@@ -449,7 +379,7 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-1 bg-white/10 backdrop-blur-sm rounded-lg p-1.5">
+                <div className="flex items-center space-x-1 bg-white/10 backdrop-blur-sm rounded-lg p-1">
                   <Wind className="h-3 w-3 text-gray-300" />
                   <div>
                     <p className="text-xs text-blue-100 font-medium">{t('windSpeed')}</p>
@@ -457,7 +387,7 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-1 bg-white/10 backdrop-blur-sm rounded-lg p-1.5">
+                <div className="flex items-center space-x-1 bg-white/10 backdrop-blur-sm rounded-lg p-1">
                   <Eye className="h-3 w-3 text-purple-300" />
                   <div>
                     <p className="text-xs text-blue-100 font-medium">{t('visibility')}</p>
@@ -467,9 +397,9 @@ const Dashboard = () => {
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center py-4">
               <div className="text-center">
-                <Cloud className="h-10 w-10 text-white/70 mx-auto mb-3" />
+                <Cloud className="h-8 w-8 text-white/70 mx-auto mb-2" />
                 <p className="text-blue-100 text-sm font-medium">{t('weatherNotAvailable')}</p>
               </div>
             </div>
@@ -477,7 +407,7 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions Section */}
-        <div className="bg-gradient-to-br from-white via-green-50 to-blue-50 rounded-2xl shadow-xl p-6 border border-green-100">
+        <div className="bg-gradient-to-br from-white via-green-50 to-blue-50 rounded-2xl shadow-xl p-6 border border-green-100 mb-4">
           <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
             <div className="bg-gradient-to-r from-green-500 to-blue-500 rounded-full p-2 mr-3">
               <span className="text-white text-lg">⚡</span>
@@ -511,7 +441,7 @@ const Dashboard = () => {
         </div>
 
         {/* Government Notifications */}
-        <div className="bg-gradient-to-br from-orange-50 via-yellow-50 to-red-50 rounded-2xl shadow-xl p-6 border border-orange-200">
+        <div className="bg-gradient-to-br from-orange-50 via-yellow-50 to-red-50 rounded-2xl shadow-xl p-6 border border-orange-200 mb-4">
           <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
             <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-full p-2 mr-3">
               <MessageSquare className="h-5 w-5 text-white" />

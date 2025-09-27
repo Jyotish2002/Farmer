@@ -20,6 +20,7 @@ const translations = {
     language: 'Language',
     refresh: 'Refresh',
     logout: 'Logout',
+    settings: 'Settings',
     
     // Greetings
     goodMorning: 'Good Morning',
@@ -271,6 +272,7 @@ const translations = {
     language: 'ഭാഷ',
     refresh: 'പുതുക്കുക',
     logout: 'പുറത്തുകടക്കുക',
+    settings: 'ക്രമീകരണങ്ങൾ',
     
     // Greetings
     goodMorning: 'സുപ്രഭാതം',
@@ -473,6 +475,7 @@ const translations = {
     language: 'भाषा',
     refresh: 'ताज़ा करें',
     logout: 'लॉग आउट',
+    settings: 'सेटिंग्स',
     
     // Greetings
     goodMorning: 'सुप्रभात',
