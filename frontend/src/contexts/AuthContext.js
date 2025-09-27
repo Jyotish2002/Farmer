@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }) => {
   });
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
+  const hasCheckedAuth = useRef(false);
 
   // Configure axios defaults
   axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -36,7 +37,9 @@ export const AuthProvider = ({ children }) => {
   // Check if user is authenticated on app load
   useEffect(() => {
     const checkAuth = async () => {
-      if (token) {
+      if (token && !hasCheckedAuth.current) {
+        hasCheckedAuth.current = true;
+        
         // Check if it's a demo token - skip API call
         if (token === 'demo-jwt-token-123') {
           // User is already set by demoLogin, don't make API call
@@ -47,10 +50,18 @@ export const AuthProvider = ({ children }) => {
         try {
           const response = await axios.get('/auth/profile');
           setUser(response.data);
+          localStorage.setItem('user', JSON.stringify(response.data));
         } catch (error) {
           console.error('Auth check failed:', error);
-          logout();
+          // Clear invalid token without triggering useEffect loop
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setToken(null);
+          setUser(null);
+          delete axios.defaults.headers.common['Authorization'];
         }
+      } else if (!token) {
+        hasCheckedAuth.current = true;
       }
       setLoading(false);
     };

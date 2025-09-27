@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const passport = require('passport');
+const session = require('express-session');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
 
@@ -23,18 +24,28 @@ require('./config/passport');
 
 const app = express();
 
-// Rate limiting
+// Rate limiting - relaxed for development
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 1000 // increased limit for development testing
 });
 
 // Middleware
-app.use(limiter);
+// app.use(limiter); // disabled for development
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Session middleware for passport
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-session-secret-change-this',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false } // set to true in production with HTTPS
+}));
+
 app.use(passport.initialize());
+app.use(passport.session());
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/farmer-assistant', {

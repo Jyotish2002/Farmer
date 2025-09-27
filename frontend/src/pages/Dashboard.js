@@ -100,14 +100,15 @@ const Dashboard = () => {
           return;
         }
 
-        // Fetch weather data (using default location for demo)
-        try {
-          // Use coords if available, otherwise fallback to city
-          const params = coords ? { lat: coords.lat, lon: coords.lon } : { city: user?.location || 'Kolkata' };
-          const weatherResponse = await axios.get('/api/weather', { params });
-          setWeather(weatherResponse.data);
-        } catch (error) {
-          console.error('Weather fetch failed:', error);
+        // Fetch initial weather using fallback city for non-demo users
+        if (!isDemoMode) {
+          try {
+            const params = { city: user?.location || 'Kolkata' };
+            const weatherResponse = await axios.get('/api/weather', { params });
+            setWeather(weatherResponse.data);
+          } catch (error) {
+            console.error('Weather fetch failed:', error);
+          }
         }
 
         // Fetch notifications
@@ -127,7 +128,24 @@ const Dashboard = () => {
     };
 
     loadData();
-  }, [isDemoMode, user?.location, t, coords]);
+  }, [isDemoMode, user?.location, t]); // Remove coords to prevent infinite loop
+
+  // Separate effect to fetch weather when coords change (after initial load)
+  useEffect(() => {
+    const fetchWeatherForCoords = async () => {
+      if (coords && !loading && !isDemoMode) {
+        try {
+          const weatherResponse = await axios.get(`/api/weather?lat=${coords.lat}&lon=${coords.lon}`);
+          setWeather(weatherResponse.data);
+          setLastUpdated(Date.now());
+        } catch (error) {
+          console.error('Weather fetch failed:', error);
+        }
+      }
+    };
+
+    fetchWeatherForCoords();
+  }, [coords, loading, isDemoMode]);
 
   // fetchDashboardData removed: loadData inside useEffect handles initial loading
 
@@ -645,7 +663,7 @@ const Dashboard = () => {
                           {getWeatherIcon(day.weather?.main)}
                           <div>
                             <p className="font-bold text-gray-800 text-base">
-                              {day.date.toLocaleDateString('en-US', { 
+                              {new Date(day.date).toLocaleDateString('en-US', { 
                                 weekday: 'short', 
                                 month: 'short', 
                                 day: 'numeric' 

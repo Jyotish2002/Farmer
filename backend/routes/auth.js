@@ -15,6 +15,15 @@ router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
   async (req, res) => {
     try {
+      console.log('Google callback invoked; req.user:', req.user ? { id: req.user._id, email: req.user.email } : null);
+
+      // If passport didn't set req.user, redirect with an informative code
+      if (!req.user) {
+        console.error('Auth callback: req.user is empty (authentication failed)');
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        return res.redirect(`${frontendUrl}/login?error=no_user`);
+      }
+
       // Generate JWT token
       const token = jwt.sign(
         {
@@ -31,7 +40,8 @@ router.get('/google/callback',
       res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
     } catch (error) {
       console.error('Auth callback error:', error);
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=auth_failed`);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      res.redirect(`${frontendUrl}/login?error=auth_failed`);
     }
   }
 );
