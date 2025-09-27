@@ -8,7 +8,8 @@ import {
   ArrowLeft,
   Send,
   RefreshCw,
-  User
+  User,
+  Mic
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -20,22 +21,146 @@ const Chatbot = () => {
   const [chatHistory, setChatHistory] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [detectedLanguage, setDetectedLanguage] = useState('auto');
   const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const synthRef = useRef(window.speechSynthesis);
+  const [speakingIndex, setSpeakingIndex] = useState(null);
   const isDemoMode = token === 'demo-jwt-token-123';
+  const handleChatSubmitRef = useRef();
 
   useEffect(() => {
     scrollToBottom();
   }, [chatHistory, isTyping]);
 
+  useEffect(() => {
+    // Initialize SpeechRecognition if available
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map(r => r[0].transcript)
+        .join('')
+        .trim();
+      if (transcript) {
+        // detect language and set
+        const lang = detectLanguageFromText(transcript);
+        setDetectedLanguage(lang || 'auto');
+        setChatMessage(transcript);
+        // Auto-submit the transcribed message via handler ref, pass transcript override
+        setTimeout(() => {
+          if (handleChatSubmitRef.current) handleChatSubmitRef.current({ preventDefault: () => {} }, transcript);
+        }, 250);
+      }
+    };
+
+    recognition.onerror = (err) => {
+      console.warn('Speech recognition error', err);
+      toast.error(t('speechRecognitionError') || 'Speech recognition failed');
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      try { recognition.stop(); } catch(e) {}
+      recognitionRef.current = null;
+    };
+  }, [t]);
+
+  // Basic script-based language detection heuristic
+  const detectLanguageFromText = (text) => {
+    if (!text) return 'en';
+  // Devanagari (Hindi, Marathi, Nepali) U+0900 - U+097F
+  if (/[\u0900-\u097F]/.test(text)) return 'hi-IN';
+  // Bengali U+0980 - U+09FF
+  if (/[\u0980-\u09FF]/.test(text)) return 'bn-IN';
+  // Malayalam U+0D00 - U+0D7F
+  if (/[\u0D00-\u0D7F]/.test(text)) return 'ml-IN';
+  // Tamil U+0B80 - U+0BFF
+  if (/[\u0B80-\u0BFF]/.test(text)) return 'ta-IN';
+  // Telugu U+0C00 - U+0C7F
+  if (/[\u0C00-\u0C7F]/.test(text)) return 'te-IN';
+  // Kannada U+0C80 - U+0CFF
+  if (/[\u0C80-\u0CFF]/.test(text)) return 'kn-IN';
+    // Fallback to English
+    return 'en-US';
+  };
+
+  // Start/Stop recognition
+  const startRecording = () => {
+    const recognition = recognitionRef.current;
+    if (!recognition) {
+      toast.error(t('speechNotSupported') || 'Speech recognition not supported in this browser.');
+      return;
+    }
+    try {
+      recognition.lang = 'en-US'; // default; actual detection happens after transcript
+      recognition.start();
+      setIsRecording(true);
+    } catch (e) {
+      console.warn('startRecording failed', e);
+      toast.error(t('speechStartError') || 'Could not start recording');
+    }
+  };
+
+  const stopRecording = () => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+    try {
+      recognition.stop();
+      setIsRecording(false);
+    } catch (e) {
+      console.warn('stopRecording failed', e);
+    }
+  };
+
+  
+
+  const toggleSpeak = (index, text, lang = 'en-US') => {
+    // If currently speaking this message, stop
+    if (speakingIndex === index) {
+      try { synthRef.current.cancel(); } catch(e) {}
+      setSpeakingIndex(null);
+      return;
+    }
+
+    // Stop any existing speech and start new
+    try { synthRef.current.cancel(); } catch(e) {}
+    setSpeakingIndex(index);
+    // create utterance and speak (use same logic as speakText but keep control here)
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = lang;
+    const voices = synthRef.current.getVoices();
+    const match = voices.find(v => v.lang && v.lang.startsWith(lang.split('-')[0]));
+    if (match) utter.voice = match;
+    utter.onend = () => setSpeakingIndex(null);
+    utter.onerror = () => setSpeakingIndex(null);
+    synthRef.current.speak(utter);
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+      // we intentionally leave dependencies empty; handler is invoked via ref
 
-  const handleChatSubmit = async (e) => {
+  const handleChatSubmit = React.useCallback(async (e, overrideMessage) => {
     e.preventDefault();
-    if (!chatMessage.trim() || loading) return;
+    const messageToSend = (overrideMessage && overrideMessage.trim()) ? overrideMessage.trim() : chatMessage.trim();
+    if (!messageToSend || loading) return;
 
-    const userMessage = chatMessage.trim();
+    const userMessage = messageToSend;
     setChatMessage('');
     setLoading(true);
 
@@ -50,7 +175,7 @@ const Chatbot = () => {
     setIsTyping(true);
 
     try {
-      let botResponse;
+  let botResponse;
       
       if (isDemoMode) {
         // Simulate API delay
@@ -113,11 +238,16 @@ const Chatbot = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [chatMessage, loading, isDemoMode, user, t]);
 
   const handleSuggestionClick = (suggestion) => {
     setChatMessage(suggestion);
   };
+
+  // Keep a stable ref to the submit handler so SpeechRecognition can call it without effect deps
+  useEffect(() => {
+    handleChatSubmitRef.current = handleChatSubmit;
+  }, [handleChatSubmit]);
 
   const clearChat = () => {
     setChatHistory([]);
@@ -228,6 +358,17 @@ const Chatbot = () => {
                       }`}>
                         {chat.message}
                       </p>
+                      {chat.type === 'bot' && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <button
+                            onClick={() => toggleSpeak(index, chat.message, detectedLanguage === 'auto' ? 'en-US' : detectedLanguage)}
+                            className={`text-xs px-2 py-1 rounded-md ${speakingIndex === index ? 'bg-red-100 hover:bg-red-200' : 'bg-gray-100 hover:bg-gray-200'}`}
+                            title={speakingIndex === index ? (t('stop') || 'Stop') : (t('playReply') || 'Play reply')}
+                          >
+                            {speakingIndex === index ? '⏹ Stop' : `▶ ${t('play') || 'Play'}`}
+                          </button>
+                        </div>
+                      )}
                       <p className={`text-xs mt-2 ${
                         chat.type === 'user' ? 'text-purple-100' : 'text-gray-400'
                       }`}>
@@ -307,15 +448,24 @@ const Chatbot = () => {
                 disabled={loading}
               />
             </div>
-            
-            <button
-              type="submit"
-              className="w-12 h-12 bg-purple-600 text-white rounded-full hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-              disabled={!chatMessage.trim() || loading}
-              title={t('sendMessage') || 'Send Message'}
-            >
-              <Send className="h-5 w-5" />
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => { isRecording ? stopRecording() : startRecording(); }}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors border ${isRecording ? 'bg-red-100 border-red-300' : 'bg-white border-gray-200 hover:bg-gray-100'}`}
+                title={isRecording ? (t('stopRecording') || 'Stop recording') : (t('startRecording') || 'Start recording')}
+              >
+                <Mic className="h-5 w-5 text-gray-700" />
+              </button>
+              <button
+                type="submit"
+                className="w-12 h-12 bg-purple-600 text-white rounded-full hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                disabled={!chatMessage.trim() || loading}
+                title={t('sendMessage') || 'Send Message'}
+              >
+                <Send className="h-5 w-5" />
+              </button>
+            </div>
           </form>
         </div>
       </div>
