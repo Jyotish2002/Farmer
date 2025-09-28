@@ -29,6 +29,7 @@ const Dashboard = () => {
   const [weather, setWeather] = useState(null);
   const [coords, setCoords] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showWeatherModal, setShowWeatherModal] = useState(false);
   const [weatherForecast, setWeatherForecast] = useState(null);
@@ -134,7 +135,20 @@ const Dashboard = () => {
         // Fetch notifications
         try {
           const notificationsResponse = await axios.get('/api/notifications');
-          setNotifications(notificationsResponse.data.notifications.slice(0, 5));
+          const notifs = notificationsResponse.data.notifications.slice(0, 5);
+          setNotifications(notifs);
+          // Map notifications to recent activities
+          const mapped = notifs.map(n => ({
+            id: n._id,
+            title: n.title,
+            subtitle: n.content,
+            icon: '📢',
+            ts: new Date(n.createdAt).getTime()
+          }));
+          setActivities(prev => {
+            const merged = [...mapped, ...prev.filter(a => !mapped.find(m => m.id === a.id))];
+            return merged.sort((a, b) => b.ts - a.ts).slice(0, 8);
+          });
         } catch (error) {
           console.error('Notifications fetch failed:', error);
         }
@@ -158,6 +172,7 @@ const Dashboard = () => {
           const weatherResponse = await axios.get(`/api/weather?lat=${coords.lat}&lon=${coords.lon}`);
           setWeather(weatherResponse.data);
           setLastUpdated(Date.now());
+          pushActivity({ id: `weather-${Date.now()}`, title: 'Weather refreshed', subtitle: `${Math.round(weatherResponse.data.temperature?.current || 0)}°C at your location`, icon: '🌤️', ts: Date.now() });
         } catch (error) {
           console.error('Weather fetch failed:', error);
         }
@@ -337,6 +352,14 @@ const Dashboard = () => {
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     return `${Math.floor(diff / 86400)}d ago`;
+  };
+
+  // helper: add a local activity (used when AI chat or manual actions occur)
+  const pushActivity = (item) => {
+    setActivities(prev => {
+      const merged = [item, ...prev];
+      return merged.slice(0, 8);
+    });
   };
 
   // show a toast when toggling live tracking to give instant feedback
@@ -600,46 +623,63 @@ const Dashboard = () => {
             Recent Activities
           </h3>
           <div className="space-y-4">
-            <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="w-3 h-3 bg-blue-500 rounded-full shadow-sm"></div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-gray-800 flex items-center">
-                  <span className="mr-2">🌤️</span>
-                  Weather forecast checked
-                </p>
-                <p className="text-xs text-gray-600 font-medium">2 minutes ago</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-orange-100 to-yellow-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="w-3 h-3 bg-orange-500 rounded-full shadow-sm"></div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-gray-800 flex items-center">
-                  <span className="mr-2">📢</span>
-                  Government advisory received
-                </p>
-                <p className="text-xs text-gray-600 font-medium">1 hour ago</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="w-3 h-3 bg-purple-500 rounded-full shadow-sm"></div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-gray-800 flex items-center">
-                  <span className="mr-2">🤖</span>
-                  AI chat consultation
-                </p>
-                <p className="text-xs text-gray-600 font-medium">3 hours ago</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="w-3 h-3 bg-green-500 rounded-full shadow-sm"></div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-gray-800 flex items-center">
-                  <span className="mr-2">🔄</span>
-                  Dashboard refreshed
-                </p>
-                <p className="text-xs text-gray-600 font-medium">5 hours ago</p>
-              </div>
-            </div>
+            {activities && activities.length > 0 ? (
+              activities.map((act) => (
+                <div key={act.id} className="flex items-center space-x-4 p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
+                  <div className="w-3 h-3 bg-gray-400 rounded-full shadow-sm" />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-800 flex items-center">
+                      <span className="mr-2">{act.icon}</span>
+                      {act.title}
+                    </p>
+                    <p className="text-xs text-gray-600 font-medium">{timeAgo(act.ts)}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <>
+                <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full shadow-sm"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-800 flex items-center">
+                      <span className="mr-2">🌤️</span>
+                      Weather forecast checked
+                    </p>
+                    <p className="text-xs text-gray-600 font-medium">2 minutes ago</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-orange-100 to-yellow-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full shadow-sm"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-800 flex items-center">
+                      <span className="mr-2">📢</span>
+                      Government advisory received
+                    </p>
+                    <p className="text-xs text-gray-600 font-medium">1 hour ago</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full shadow-sm"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-800 flex items-center">
+                      <span className="mr-2">🤖</span>
+                      AI chat consultation
+                    </p>
+                    <p className="text-xs text-gray-600 font-medium">3 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
+                  <div className="w-3 h-3 bg-green-500 rounded-full shadow-sm"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-800 flex items-center">
+                      <span className="mr-2">🔄</span>
+                      Dashboard refreshed
+                    </p>
+                    <p className="text-xs text-gray-600 font-medium">5 hours ago</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
