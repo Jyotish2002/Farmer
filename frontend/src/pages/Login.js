@@ -19,19 +19,21 @@ const Login = () => {
   }, [isAuthenticated, loading, navigate, location]);
 
   const handleGoogleLogin = () => {
-    // Prefer a relative serverless path for Vercel deployments: /api/auth/google
-    // Fall back to REACT_APP_API_URL (useful for local dev or other hosts)
-  const relativeVercelPath = '/api/auth/google';
-    const apiBase = process.env.REACT_APP_API_URL || 'https://farmer-1-4wja.onrender.com';
+    // Use an absolute backend URL when provided at build time (REACT_APP_API_URL).
+    // This is important when the frontend is deployed on a different host than the backend
+    // (for example, frontend on Netlify/Vercel and backend on Render). If no API URL
+    // is provided, fall back to a same-origin serverless path (used for monorepo Vercel setups).
+    const apiBase = process.env.REACT_APP_API_URL || '';
 
-    // If we detect a production host (not localhost), try the relative serverless path first
-    if (window.location.hostname !== 'localhost') {
-      window.location.href = relativeVercelPath;
+    if (apiBase) {
+      // Explicit backend URL configured (recommended for separate deployments)
+      window.location.href = `${apiBase.replace(/\/$/, '')}/auth/google`;
       return;
     }
 
-    // Local dev or unspecified - use configured API URL
-    window.location.href = `${apiBase}/auth/google`;
+    // No explicit backend configured — assume backend lives on the same origin under /api
+    // (this matches serverless setups where backend functions are mounted at /api)
+    window.location.href = '/api/auth/google';
   };
 
   const handleDemoLogin = () => {
