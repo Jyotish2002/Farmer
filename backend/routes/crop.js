@@ -44,20 +44,21 @@ router.post('/', async (req, res) => {
     }
 
     // 4. Call the Python ML API with ALL required data
-    const mlResponse = await axios.post(ML_API_URL, {
-      N,
-      P,
-      K,
-      temperature,
-      humidity,
-      ph,
-      rainfall
-    });
+    // For testing, return a mock response instead of calling ML API
+    // const mlResponse = await axios.post(ML_API_URL, {
+    //   N,
+    //   P,
+    //   K,
+    //   temperature,
+    //   humidity,
+    //   ph,
+    //   rainfall
+    // });
+    // const recommended_crop = mlResponse.data.recommended_crop;
 
-    // 5. Send response back to frontend
-    res.json({
-      recommended_crop: mlResponse.data.recommended_crop
-    });
+    // Mock response for testing
+    const crops = ['rice', 'maize', 'chickpea', 'kidneybeans', 'pigeonpeas', 'mothbeans', 'mungbean', 'blackgram', 'lentil', 'pomegranate', 'banana', 'mango', 'grapes', 'watermelon', 'muskmelon', 'apple', 'orange', 'papaya', 'coconut', 'cotton', 'jute', 'coffee'];
+    const recommended_crop = crops[Math.floor(Math.random() * crops.length)];
 
   } catch (error) {
     console.error('Crop recommendation error:', error.response?.data || error.message);
