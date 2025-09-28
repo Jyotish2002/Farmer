@@ -125,22 +125,38 @@ const CropRecommendation = () => {
   // on mount, try to auto-detect location and fill weather fields
   useEffect(() => {
     if (!navigator?.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        setCoords({ lat, lon });
-        setAccuracy(pos.coords.accuracy);
-        setLastGeoError(null);
-        fetchWeatherForCoords(lat, lon);
-      },
-      (err) => {
+
+    const getPosition = (options = {}) =>
+      new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, options);
+      });
+
+    (async () => {
+      try {
+        // Try quick (network-based) first
+        const quick = { enableHighAccuracy: false, timeout: 7000, maximumAge: 5 * 60 * 1000 };
+        let pos = await getPosition(quick).catch(async (err) => {
+          if (err && err.code === 3) {
+            // timeout -> retry with high accuracy
+            return getPosition({ enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+          }
+          throw err;
+        });
+
+        if (pos && pos.coords) {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          setCoords({ lat, lon });
+          setAccuracy(pos.coords.accuracy);
+          setLastGeoError(null);
+          fetchWeatherForCoords(lat, lon);
+        }
+      } catch (err) {
         console.warn('Geolocation denied or unavailable', err);
         const msg = err?.code === 1 ? 'Permission denied' : err?.code === 2 ? 'Position unavailable' : err?.code === 3 ? 'Timeout' : 'Geolocation error';
         setLastGeoError(`${msg}${err?.message ? `: ${err.message}` : ''}`);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
+      }
+    })();
   }, []);
 
   const handleUseCurrentLocation = () => {
@@ -148,24 +164,36 @@ const CropRecommendation = () => {
       toast.error('Geolocation not available');
       return;
     }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        setCoords({ lat, lon });
-        setAccuracy(pos.coords.accuracy);
-        fetchWeatherForCoords(lat, lon);
-        toast.success('Location updated');
-      },
-      (err) => {
+    const getPosition = (options = {}) =>
+      new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, options);
+      });
+
+    (async () => {
+      try {
+        const quick = { enableHighAccuracy: false, timeout: 7000, maximumAge: 5 * 60 * 1000 };
+        let pos = await getPosition(quick).catch(async (err) => {
+          if (err && err.code === 3) return getPosition({ enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+          throw err;
+        });
+
+        if (pos && pos.coords) {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          setCoords({ lat, lon });
+          setAccuracy(pos.coords.accuracy);
+          fetchWeatherForCoords(lat, lon);
+          toast.success('Location updated');
+          setLastGeoError(null);
+        }
+      } catch (err) {
         console.warn('Geolocation error', err);
         const msg = err?.code === 1 ? 'Permission denied' : err?.code === 2 ? 'Position unavailable' : err?.code === 3 ? 'Timeout' : 'Geolocation error';
         const friendly = `${msg}${err?.message ? `: ${err.message}` : ''}`;
         setLastGeoError(friendly);
         toast.error(`Unable to get current location — ${friendly}`);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
+      }
+    })();
   };
 
   return (

@@ -45,14 +45,34 @@ const Dashboard = () => {
         setLoading(true);
 
         // Try to get browser geolocation first (prompts user)
-        if (!isDemoMode && navigator?.geolocation) {
+        // Mobile devices can be slow to respond or have flaky GPS. We'll attempt a
+        // quick low-accuracy call first (short timeout) and if it fails due to
+        // timeout we'll try a second attempt with longer timeout and allowHighAccuracy.
+        const getPosition = (options = {}) =>
+          new Promise((resolve, reject) => {
+            if (!navigator?.geolocation) return reject(new Error('Geolocation not supported'));
+            navigator.geolocation.getCurrentPosition(resolve, reject, options);
+          });
+
+        if (!isDemoMode) {
           try {
-            const position = await new Promise((resolve, reject) => {
-              navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 8000 });
+            // Quick try: give browser 6s to return a cached or network-based position
+            const quickOpts = { enableHighAccuracy: false, timeout: 6000, maximumAge: 5 * 60 * 1000 };
+            let position = await getPosition(quickOpts).catch((err) => {
+              // If quick attempt times out, try again with high accuracy and longer timeout
+              if (err && err.code === 3) {
+                console.info('Quick geolocation timed out, retrying with longer timeout');
+                return getPosition({ enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+              }
+              throw err;
             });
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            setCoords({ lat, lon });
+
+            // If we still don't have position, fall back to profile/city silently
+            if (position && position.coords) {
+              const lat = position.coords.latitude;
+              const lon = position.coords.longitude;
+              setCoords({ lat, lon });
+            }
           } catch (err) {
             console.warn('Geolocation unavailable or denied, falling back to profile/city', err);
           }
