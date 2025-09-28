@@ -280,6 +280,7 @@ const CropRecommendation = () => {
                 type="number"
                 id="rainfall"
                 name="rainfall"
+                step="0.1"
                 min="0"
                 value={formData.rainfall}
                 onChange={handleInputChange}

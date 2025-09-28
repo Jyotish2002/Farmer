@@ -718,7 +718,7 @@ const Dashboard = () => {
                           <CloudRain className="h-4 w-4 text-blue-600" />
                           <div>
                             <p className="text-xs text-gray-600">{t('rainfall')}</p>
-                            <p className="text-sm font-medium">{day.rain?.amount}mm</p>
+                            <p className="text-sm font-medium">{day.rain?.amount != null ? `${Math.round(day.rain.amount * 10) / 10}mm` : '0mm'}</p>
                           </div>
                         </div>
 
