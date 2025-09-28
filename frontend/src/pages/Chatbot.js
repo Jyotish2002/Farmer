@@ -9,7 +9,8 @@ import {
   Send,
   RefreshCw,
   User,
-  Mic
+  Mic,
+  MessageSquare
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -22,6 +23,10 @@ const Chatbot = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isExpertOpen, setIsExpertOpen] = useState(false);
+  const [expertQuery, setExpertQuery] = useState('');
+  const [isExpertRecording, setIsExpertRecording] = useState(false);
+  const expertRecognitionRef = useRef(null);
   const [detectedLanguage, setDetectedLanguage] = useState('auto');
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -73,9 +78,28 @@ const Chatbot = () => {
 
     recognitionRef.current = recognition;
 
+    // Expert modal separate recognition (so user can record expert question independently)
+    const expertRec = new SpeechRecognition();
+    expertRec.lang = 'en-US';
+    expertRec.interimResults = false;
+    expertRec.maxAlternatives = 1;
+    expertRec.onresult = (event) => {
+      const transcript = Array.from(event.results).map(r => r[0].transcript).join('').trim();
+      if (transcript) setExpertQuery(transcript);
+    };
+    expertRec.onerror = (err) => {
+      console.warn('Expert recognition error', err);
+      toast.error(t('speechRecognitionError') || 'Speech recognition failed');
+      setIsExpertRecording(false);
+    };
+    expertRec.onend = () => setIsExpertRecording(false);
+    expertRecognitionRef.current = expertRec;
+
     return () => {
       try { recognition.stop(); } catch(e) {}
       recognitionRef.current = null;
+      try { expertRec.stop(); } catch(e) {}
+      expertRecognitionRef.current = null;
     };
   }, [t]);
 
@@ -123,6 +147,33 @@ const Chatbot = () => {
       setIsRecording(false);
     } catch (e) {
       console.warn('stopRecording failed', e);
+    }
+  };
+
+  const startExpertRecording = () => {
+    const rec = expertRecognitionRef.current;
+    if (!rec) {
+      toast.error(t('speechNotSupported') || 'Speech recognition not supported in this browser.');
+      return;
+    }
+    try {
+      rec.lang = 'en-US';
+      rec.start();
+      setIsExpertRecording(true);
+    } catch (e) {
+      console.warn('startExpertRecording failed', e);
+      toast.error(t('speechStartError') || 'Could not start recording');
+    }
+  };
+
+  const stopExpertRecording = () => {
+    const rec = expertRecognitionRef.current;
+    if (!rec) return;
+    try {
+      rec.stop();
+      setIsExpertRecording(false);
+    } catch (e) {
+      console.warn('stopExpertRecording failed', e);
     }
   };
 
@@ -254,6 +305,46 @@ const Chatbot = () => {
     toast.success(t('chatCleared') || 'Chat cleared');
   };
 
+  // Ask Expert handlers
+  const closeExpert = () => {
+    setIsExpertOpen(false);
+    setExpertQuery('');
+    setIsExpertRecording(false);
+  };
+
+  const submitExpertQuery = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const q = expertQuery.trim();
+    if (!q) return toast.error(t('enterQuestion') || 'Please enter a question for the expert');
+
+    // Add a user-like message indicating question to expert
+    setChatHistory(prev => [...prev, { type: 'user', message: q, timestamp: new Date(), meta: { toExpert: true } }]);
+    closeExpert();
+
+    // Show temporary typing
+    setIsTyping(true);
+    try {
+      let expertReply;
+      if (isDemoMode) {
+        await new Promise(r => setTimeout(r, 1200));
+        expertReply = "I recommend checking local extension offices and contacting an agronomist in your area for specific assistance. Meanwhile, try the following: take clear photos of the issue, note recent weather, and the crop stage.";
+      } else {
+        const resp = await axios.post('/api/expert', { question: q, userId: user?.id });
+        expertReply = resp.data.answer;
+      }
+
+      setChatHistory(prev => [...prev, { type: 'bot', message: expertReply, timestamp: new Date(), meta: { fromExpert: true } }]);
+      // Auto-play expert reply audio for accessibility
+      try { toggleSpeak(chatHistory.length + 1, expertReply, detectedLanguage === 'auto' ? 'en-US' : detectedLanguage); } catch(e) {}
+    } catch (err) {
+      console.error('Expert API error', err);
+      setChatHistory(prev => [...prev, { type: 'bot', message: t('expertError') || 'Unable to reach expert right now. Please try again later.', timestamp: new Date() }]);
+      toast.error(t('expertError') || 'Expert request failed');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
   const quickSuggestions = [
     t('weatherToday') || "What's the weather like today?",
     t('cropRecommendations') || "What crops should I plant?",
@@ -289,13 +380,24 @@ const Chatbot = () => {
             </div>
           </div>
 
-          <button
-            onClick={clearChat}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            title={t('clearChat') || 'Clear Chat'}
-          >
-            <RefreshCw className="h-5 w-5 text-gray-600" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setIsExpertOpen(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center space-x-2"
+              title={t('askExpert') || 'Ask an Expert'}
+            >
+              <MessageSquare className="h-5 w-5 text-green-600" />
+              <span className="text-sm text-gray-700 hidden sm:inline">{t('askExpert') || 'Ask Expert'}</span>
+            </button>
+
+            <button
+              onClick={clearChat}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              title={t('clearChat') || 'Clear Chat'}
+            >
+              <RefreshCw className="h-5 w-5 text-gray-600" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -367,6 +469,29 @@ const Chatbot = () => {
                           >
                             {speakingIndex === index ? '⏹ Stop' : `▶ ${t('play') || 'Play'}`}
                           </button>
+                          {/* Expert CTA: show if this bot reply is not already from an expert */}
+                          {!chat.meta?.fromExpert && (
+                            <div className="ml-2">
+                              <button
+                                onClick={() => {
+                                  // Find the most recent user message before this bot reply
+                                  const prevUserMsg = (() => {
+                                    for (let i = index - 1; i >= 0; i--) {
+                                      if (chatHistory[i].type === 'user') return chatHistory[i].message;
+                                    }
+                                    return null;
+                                  })();
+                                  const prefill = prevUserMsg ? prevUserMsg : chat.message;
+                                  setExpertQuery(prefill);
+                                  setIsExpertOpen(true);
+                                }}
+                                className="text-xs px-2 py-1 rounded-md bg-yellow-100 hover:bg-yellow-200 ml-2"
+                                title={t('askExpert') || 'Ask Expert'}
+                              >
+                                {t('askExpert') || 'Ask Expert'}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                       <p className={`text-xs mt-2 ${
@@ -468,6 +593,56 @@ const Chatbot = () => {
             </div>
           </form>
         </div>
+
+        {/* Expert Modal */}
+        {isExpertOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg w-full max-w-xl mx-4 p-4 shadow-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold">{t('askExpert') || 'Ask an Expert'}</h3>
+                <button onClick={closeExpert} className="text-gray-500 hover:text-gray-700">✕</button>
+              </div>
+
+              <form onSubmit={submitExpertQuery} className="space-y-3">
+                <textarea
+                  value={expertQuery}
+                  onChange={(e) => setExpertQuery(e.target.value)}
+                  placeholder={t('describeIssue') || 'Describe your issue or question for an expert...'}
+                  rows={4}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+
+                <div className="flex items-center justify-between space-x-3">
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => { isExpertRecording ? stopExpertRecording() : startExpertRecording(); }}
+                      className={`px-3 py-2 rounded-md border ${isExpertRecording ? 'bg-red-100 border-red-300' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+                    >
+                      {isExpertRecording ? (t('stopRecording') || 'Stop') : (t('recordQuestion') || 'Record')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExpertQuery('')}
+                      className="px-3 py-2 rounded-md border bg-white hover:bg-gray-50"
+                    >
+                      {t('clear') || 'Clear'}
+                    </button>
+                  </div>
+
+                  <div>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                    >
+                      {t('askExpertNow') || 'Ask Expert'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
