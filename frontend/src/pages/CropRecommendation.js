@@ -55,7 +55,10 @@ const CropRecommendation = () => {
     try {
       // include location if available
       const payload = {
-        ...formData,
+        soil_type: selectedSoil,
+        ph: parseFloat(formData.soilPh),
+        temperature: parseFloat(formData.temperature),
+        rainfall: parseFloat(formData.rainfall),
         ...(coords ? { lat: coords.lat, lon: coords.lon } : {})
       };
       const response = await axios.post('/api/crop-recommendation', payload);
@@ -353,18 +356,8 @@ const CropRecommendation = () => {
                 {t('recommendedCrop')}: {recommendation.recommended_crop}
               </h3>
               <p className="text-green-700">
-                {t('confidence')}: {Math.round(recommendation.confidence * 100)}%
+                {t('basedOnConditions') || 'Based on your soil type, pH, temperature, and rainfall conditions.'}
               </p>
-              {recommendation.alternatives && recommendation.alternatives.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-sm text-green-600 font-medium">{t('alternativeCrops') || 'Alternative crops'}:</p>
-                  <ul className="list-disc list-inside text-sm text-green-600 mt-1">
-                    {recommendation.alternatives.map((alt, index) => (
-                      <li key={index}>{alt}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           )}
         </div>
