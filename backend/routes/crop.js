@@ -11,58 +11,58 @@ const WEATHER_API_KEY = process.env.WEATHER_API_KEY; // Store your key in an env
 // Crop recommendation endpoint
 router.post('/', async (req, res) => {
   try {
-    // 1. Get input from the user/frontend
-    const { soil_type, ph, temperature, rainfall, lat, lon } = req.body;
+    // Frontend now sends the ML-ready format directly
+    const { N, P, K, temperature, humidity, ph, rainfall } = req.body;
 
-    if (!soil_type || !ph || !temperature || !rainfall) {
-      return res.status(400).json({ error: 'Missing required fields: soil_type, ph, temperature, rainfall' });
+    if (!N || !P || !K || !temperature || !humidity || !ph || !rainfall) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: N, P, K, temperature, humidity, ph, rainfall' 
+      });
     }
 
-    // 2. Map soil_type to typical NPK values
-    const getNPK = (soilType) => {
-      const npkMap = {
-        clay: { N: 40, P: 20, K: 30 },
-        loamy: { N: 50, P: 25, K: 35 },
-        sandy: { N: 30, P: 15, K: 25 },
-        silt: { N: 45, P: 22, K: 32 }
-      };
-      return npkMap[soilType] || { N: 40, P: 20, K: 30 }; // default to clay
-    };
-
-    const { N, P, K } = getNPK(soil_type);
-
-    // 3. Fetch weather data for humidity if lat/lon provided
-    let humidity = 60; // default humidity
-    if (lat && lon && WEATHER_API_KEY) {
-      try {
-        const weatherApiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`;
-        const weatherResponse = await axios.get(weatherApiUrl);
-        humidity = weatherResponse.data.main.humidity;
-      } catch (weatherError) {
-        console.warn('Failed to fetch humidity, using default:', weatherError.message);
+    // Call the Python ML API directly with the data from frontend
+    console.log('Calling ML API with data:', { N, P, K, temperature, humidity, ph, rainfall });
+    
+    const mlResponse = await axios.post(ML_API_URL, {
+      N,
+      P,
+      K,
+      temperature,
+      humidity,
+      ph,
+      rainfall
+    }, {
+      timeout: 30000, // 30 second timeout
+      headers: {
+        'Content-Type': 'application/json'
       }
-    }
+    });
 
-    // 4. Call the Python ML API with ALL required data
-    // For testing, return a mock response instead of calling ML API
-    // const mlResponse = await axios.post(ML_API_URL, {
-    //   N,
-    //   P,
-    //   K,
-    //   temperature,
-    //   humidity,
-    //   ph,
-    //   rainfall
-    // });
-    // const recommended_crop = mlResponse.data.recommended_crop;
+    console.log('ML API response:', mlResponse.data);
+    const recommended_crop = mlResponse.data.recommended_crop;
 
-    // Mock response for testing
-    const crops = ['rice', 'maize', 'chickpea', 'kidneybeans', 'pigeonpeas', 'mothbeans', 'mungbean', 'blackgram', 'lentil', 'pomegranate', 'banana', 'mango', 'grapes', 'watermelon', 'muskmelon', 'apple', 'orange', 'papaya', 'coconut', 'cotton', 'jute', 'coffee'];
-    const recommended_crop = crops[Math.floor(Math.random() * crops.length)];
+    // Send response back to frontend
+    res.json({
+      recommended_crop: recommended_crop
+    });
 
   } catch (error) {
     console.error('Crop recommendation error:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Failed to get crop recommendation' });
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    
+    let errorMessage = 'Failed to get crop recommendation';
+    if (error.code === 'ECONNREFUSED') {
+      errorMessage = 'ML API is not running on port 8000';
+    } else if (error.code === 'TIMEOUT') {
+      errorMessage = 'ML API request timed out';
+    }
+    
+    res.status(500).json({ error: errorMessage });
   }
 });
 

@@ -53,14 +53,74 @@ const CropRecommendation = () => {
 
     setLoading(true);
     try {
-      // include location if available
-      const payload = {
-        soil_type: selectedSoil,
-        ph: parseFloat(formData.soilPh),
-        temperature: parseFloat(formData.temperature),
-        rainfall: parseFloat(formData.rainfall),
-        ...(coords ? { lat: coords.lat, lon: coords.lon } : {})
+      // Calculate N, P, K based on soil type and location
+      const getNPKFromLocation = (soilType, lat, lon) => {
+        // Base NPK values for different soil types
+        const baseNPK = {
+          clay: { N: 40, P: 20, K: 30 },
+          loamy: { N: 50, P: 25, K: 35 },
+          sandy: { N: 30, P: 15, K: 25 },
+          silt: { N: 45, P: 22, K: 32 }
+        };
+
+        let npkValues = baseNPK[soilType] || baseNPK.clay;
+
+        // Adjust NPK based on geographic location (India regions)
+        if (lat && lon) {
+          // North India (higher latitude) - typically more fertile
+          if (lat > 26) {
+            npkValues.N += 10;
+            npkValues.P += 5;
+            npkValues.K += 8;
+          }
+          // South India (lower latitude) - adjust for tropical conditions
+          else if (lat < 20) {
+            npkValues.N += 5;
+            npkValues.P += 3;
+            npkValues.K += 5;
+          }
+          // Central India - moderate adjustments
+          else {
+            npkValues.N += 7;
+            npkValues.P += 4;
+            npkValues.K += 6;
+          }
+
+          // Coastal regions (near sea) - higher K
+          if ((lon > 68 && lon < 78 && lat < 25) || // West coast
+              (lon > 80 && lon < 87 && lat < 22)) { // East coast
+            npkValues.K += 10;
+          }
+        }
+
+        return npkValues;
       };
+
+      // Get humidity from weather or use default
+      let humidity = 60; // default
+      if (coords) {
+        try {
+          const weatherResp = await axios.get('/api/weather', { params: { lat: coords.lat, lon: coords.lon } });
+          humidity = weatherResp.data?.main?.humidity || weatherResp.data?.humidity?.current || 60;
+        } catch (err) {
+          console.warn('Could not fetch humidity, using default');
+        }
+      }
+
+      const { N, P, K } = getNPKFromLocation(selectedSoil, coords?.lat, coords?.lon);
+
+      // Send the exact format your ML API expects
+      const payload = {
+        N,
+        P,
+        K,
+        temperature: parseFloat(formData.temperature),
+        humidity,
+        ph: parseFloat(formData.soilPh),
+        rainfall: parseFloat(formData.rainfall)
+      };
+      
+      console.log('Frontend sending ML-ready payload:', payload);
       const response = await axios.post('/api/crop-recommendation', payload);
       setRecommendation(response.data);
       toast.success(t('recommendationGenerated') || 'Crop recommendation generated!');
