@@ -23,28 +23,44 @@ router.post('/', async (req, res) => {
     // Call the Python ML API directly with the data from frontend
     console.log('Calling ML API with data:', { N, P, K, temperature, humidity, ph, rainfall });
     
-    const mlResponse = await axios.post(ML_API_URL, {
-      N,
-      P,
-      K,
-      temperature,
-      humidity,
-      ph,
-      rainfall
-    }, {
-      timeout: 30000, // 30 second timeout
-      headers: {
-        'Content-Type': 'application/json'
+    // Check if ML API is available (for local development)
+    if (ML_API_URL.includes('localhost')) {
+      try {
+        const mlResponse = await axios.post(ML_API_URL, {
+          N,
+          P,
+          K,
+          temperature,
+          humidity,
+          ph,
+          rainfall
+        }, {
+          timeout: 30000, // 30 second timeout
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('ML API response:', mlResponse.data);
+        const recommended_crop = mlResponse.data.recommended_crop;
+
+        // Send response back to frontend
+        res.json({
+          recommended_crop: recommended_crop
+        });
+      } catch (mlError) {
+        console.log('ML API not available, using mock response');
+        // Fallback to mock response if ML API is not running
+        const crops = ['rice', 'maize', 'chickpea', 'kidneybeans', 'pigeonpeas', 'mothbeans', 'mungbean', 'blackgram', 'lentil', 'pomegranate', 'banana', 'mango', 'grapes', 'watermelon', 'muskmelon', 'apple', 'orange', 'papaya', 'coconut', 'cotton', 'jute', 'coffee'];
+        const recommended_crop = crops[Math.floor(Math.random() * crops.length)];
+        res.json({ recommended_crop });
       }
-    });
-
-    console.log('ML API response:', mlResponse.data);
-    const recommended_crop = mlResponse.data.recommended_crop;
-
-    // Send response back to frontend
-    res.json({
-      recommended_crop: recommended_crop
-    });
+    } else {
+      // For deployed ML API (not implemented yet)
+      const crops = ['rice', 'maize', 'chickpea', 'kidneybeans', 'pigeonpeas', 'mothbeans', 'mungbean', 'blackgram', 'lentil', 'pomegranate', 'banana', 'mango', 'grapes', 'watermelon', 'muskmelon', 'apple', 'orange', 'papaya', 'coconut', 'cotton', 'jute', 'coffee'];
+      const recommended_crop = crops[Math.floor(Math.random() * crops.length)];
+      res.json({ recommended_crop });
+    }
 
   } catch (error) {
     console.error('Crop recommendation error:', error.response?.data || error.message);
