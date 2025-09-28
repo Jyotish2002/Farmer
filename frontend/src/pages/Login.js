@@ -19,7 +19,19 @@ const Login = () => {
   }, [isAuthenticated, loading, navigate, location]);
 
   const handleGoogleLogin = () => {
-    window.location.href = `${process.env.REACT_APP_API_URL || 'https://farmer-1-4wja.onrender.com'}/auth/google`;
+    // Prefer a relative serverless path for Vercel deployments: /api/auth/google
+    // Fall back to REACT_APP_API_URL (useful for local dev or other hosts)
+  const relativeVercelPath = '/api/auth/google';
+    const apiBase = process.env.REACT_APP_API_URL || 'https://farmer-1-4wja.onrender.com';
+
+    // If we detect a production host (not localhost), try the relative serverless path first
+    if (window.location.hostname !== 'localhost') {
+      window.location.href = relativeVercelPath;
+      return;
+    }
+
+    // Local dev or unspecified - use configured API URL
+    window.location.href = `${apiBase}/auth/google`;
   };
 
   const handleDemoLogin = () => {
