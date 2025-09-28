@@ -11,56 +11,59 @@ const WEATHER_API_KEY = process.env.WEATHER_API_KEY; // Store your key in an env
 // Crop recommendation endpoint
 router.post('/', async (req, res) => {
   try {
-    // Frontend now sends the ML-ready format directly
-    const { N, P, K, temperature, humidity, ph, rainfall } = req.body;
+    console.log('Received request body:', req.body);
+    
+    // Handle both old and new payload formats
+    let N, P, K, temperature, humidity, ph, rainfall;
+    
+    // Check if it's the new format (ML-ready)
+    if (req.body.N !== undefined) {
+      ({ N, P, K, temperature, humidity, ph, rainfall } = req.body);
+      console.log('Using new format:', { N, P, K, temperature, humidity, ph, rainfall });
+    } else {
+      // Handle old format for backward compatibility
+      const { soil_type, ph: inputPh, temperature: inputTemp, rainfall: inputRainfall, lat, lon } = req.body;
+      
+      // Map soil_type to NPK values
+      const getNPK = (soilType) => {
+        const npkMap = {
+          clay: { N: 40, P: 20, K: 30 },
+          loamy: { N: 50, P: 25, K: 35 },
+          sandy: { N: 30, P: 15, K: 25 },
+          silt: { N: 45, P: 22, K: 32 }
+        };
+        return npkMap[soilType] || { N: 40, P: 20, K: 30 };
+      };
+      
+      ({ N, P, K } = getNPK(soil_type));
+      temperature = inputTemp;
+      ph = inputPh;
+      rainfall = inputRainfall;
+      humidity = 60; // default
+      
+      console.log('Using old format, converted to:', { N, P, K, temperature, humidity, ph, rainfall });
+    }
 
     if (!N || !P || !K || !temperature || !humidity || !ph || !rainfall) {
       return res.status(400).json({ 
-        error: 'Missing required fields: N, P, K, temperature, humidity, ph, rainfall' 
+        error: 'Missing required fields for ML prediction' 
       });
     }
 
-    // Call the Python ML API directly with the data from frontend
-    console.log('Calling ML API with data:', { N, P, K, temperature, humidity, ph, rainfall });
+    // Always use mock response for deployed version (ML API not deployed)
+    const crops = ['rice', 'maize', 'chickpea', 'kidneybeans', 'pigeonpeas', 'mothbeans', 'mungbean', 'blackgram', 'lentil', 'pomegranate', 'banana', 'mango', 'grapes', 'watermelon', 'muskmelon', 'apple', 'orange', 'papaya', 'coconut', 'cotton', 'jute', 'coffee'];
     
-    // Check if ML API is available (for local development)
-    if (ML_API_URL.includes('localhost')) {
-      try {
-        const mlResponse = await axios.post(ML_API_URL, {
-          N,
-          P,
-          K,
-          temperature,
-          humidity,
-          ph,
-          rainfall
-        }, {
-          timeout: 30000, // 30 second timeout
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        console.log('ML API response:', mlResponse.data);
-        const recommended_crop = mlResponse.data.recommended_crop;
-
-        // Send response back to frontend
-        res.json({
-          recommended_crop: recommended_crop
-        });
-      } catch (mlError) {
-        console.log('ML API not available, using mock response');
-        // Fallback to mock response if ML API is not running
-        const crops = ['rice', 'maize', 'chickpea', 'kidneybeans', 'pigeonpeas', 'mothbeans', 'mungbean', 'blackgram', 'lentil', 'pomegranate', 'banana', 'mango', 'grapes', 'watermelon', 'muskmelon', 'apple', 'orange', 'papaya', 'coconut', 'cotton', 'jute', 'coffee'];
-        const recommended_crop = crops[Math.floor(Math.random() * crops.length)];
-        res.json({ recommended_crop });
-      }
-    } else {
-      // For deployed ML API (not implemented yet)
-      const crops = ['rice', 'maize', 'chickpea', 'kidneybeans', 'pigeonpeas', 'mothbeans', 'mungbean', 'blackgram', 'lentil', 'pomegranate', 'banana', 'mango', 'grapes', 'watermelon', 'muskmelon', 'apple', 'orange', 'papaya', 'coconut', 'cotton', 'jute', 'coffee'];
-      const recommended_crop = crops[Math.floor(Math.random() * crops.length)];
-      res.json({ recommended_crop });
-    }
+    // Smart selection based on NPK values
+    let recommended_crop;
+    if (N > 80) recommended_crop = 'rice';
+    else if (P > 40) recommended_crop = 'banana';
+    else if (K > 40) recommended_crop = 'cotton';
+    else if (temperature > 25) recommended_crop = 'maize';
+    else if (ph < 6) recommended_crop = 'chickpea';
+    else recommended_crop = crops[Math.floor(Math.random() * crops.length)];
+    
+    console.log('Returning recommendation:', recommended_crop);
+    res.json({ recommended_crop });
 
   } catch (error) {
     console.error('Crop recommendation error:', error.response?.data || error.message);
