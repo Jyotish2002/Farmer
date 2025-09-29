@@ -5,6 +5,9 @@ import App from './App';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
+// Import API configuration to set up axios defaults
+import './config/api';
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>

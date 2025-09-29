@@ -16,7 +16,7 @@ import toast from 'react-hot-toast';
 
 const Chatbot = () => {
   const { user, token } = useAuth();
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
   const navigate = useNavigate();
   const [chatMessage, setChatMessage] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
@@ -261,15 +261,20 @@ const Chatbot = () => {
           botResponse = generalResponses[Math.floor(Math.random() * generalResponses.length)];
         }
       } else {
-        // detect language for typed input as well (same heuristic used for speech)
-  const lang = detectLanguageFromText(userMessage) || 'en-US';
-  setDetectedLanguage(lang);
-  console.log('Chatbot: sending message to backend', { message: userMessage, detectedLanguage: lang });
-        const response = await axios.post('/api/chatbot', {
+        // Use selected language preference instead of detecting from text
+        const selectedLang = currentLanguage;
+        console.log('Chatbot: using selected language', { selectedLang, message: userMessage });
+        
+        // Use dedicated Malayalam chatbot when Malayalam is selected
+        const isMalayalamSelected = selectedLang === 'malayalam';
+        const endpoint = isMalayalamSelected ? '/api/malayalam-chatbot' : '/api/chatbot';
+        
+        console.log('Using endpoint:', endpoint, 'for selected language:', selectedLang);
+        const response = await axios.post(endpoint, {
           message: userMessage,
           context: 'farmer_chatbot_page',
           userId: user?.id,
-          detectedLanguage: lang
+          selectedLanguage: selectedLang
         });
         botResponse = response.data.reply;
         if (!botResponse || botResponse.trim() === '') {
@@ -298,7 +303,7 @@ const Chatbot = () => {
     } finally {
       setLoading(false);
     }
-  }, [chatMessage, loading, isDemoMode, user, t]);
+  }, [chatMessage, loading, isDemoMode, user, t, currentLanguage]);
 
   const handleSuggestionClick = (suggestion) => {
     setChatMessage(suggestion);
