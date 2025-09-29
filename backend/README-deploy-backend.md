@@ -16,6 +16,8 @@ Add the following environment variables in Vercel for Production (and Preview if
 - GOOGLE_CALLBACK_URL: https://<your-backend-domain>/api/auth/google/callback
 - FRONTEND_URL: https://<your-frontend-domain>
 - GEMINI_API_KEY: <optional, only if chatbot is used>
+- GEMINI_API_KEY: <required for chatbot>
+- GOOGLE_TRANSLATE_API_KEY: <required for multilingual chatbot translations>
 - OPENWEATHER_API_KEY: <optional>
 
 3. Google Cloud Console

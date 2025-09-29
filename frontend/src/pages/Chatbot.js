@@ -261,12 +261,21 @@ const Chatbot = () => {
           botResponse = generalResponses[Math.floor(Math.random() * generalResponses.length)];
         }
       } else {
+        // detect language for typed input as well (same heuristic used for speech)
+  const lang = detectLanguageFromText(userMessage) || 'en-US';
+  setDetectedLanguage(lang);
+  console.log('Chatbot: sending message to backend', { message: userMessage, detectedLanguage: lang });
         const response = await axios.post('/api/chatbot', {
           message: userMessage,
           context: 'farmer_chatbot_page',
-          userId: user?.id
+          userId: user?.id,
+          detectedLanguage: lang
         });
         botResponse = response.data.reply;
+        if (!botResponse || botResponse.trim() === '') {
+          // Provide a clearer fallback message so users know the backend returned nothing
+          botResponse = t('chatbotErrorMessage') || 'Sorry, I\'m having trouble responding right now. Please try again later.';
+        }
       }
 
       // Remove typing indicator and add bot response

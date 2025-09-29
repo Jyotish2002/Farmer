@@ -22,8 +22,8 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const hasCheckedAuth = useRef(false);
 
-  // Configure axios defaults
-  axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  // Configure axios defaults - force localhost for testing
+  axios.defaults.baseURL = 'http://localhost:5000';
 
   // Set authorization header if token exists
   useEffect(() => {

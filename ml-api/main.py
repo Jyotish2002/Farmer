@@ -22,6 +22,7 @@ app.add_middleware(
 # This loads the .joblib file you created in Colab
 try:
     model = joblib.load('models/crop_recommendation_model.joblib')
+    print(f"Model loaded successfully: {type(model)}")
 except FileNotFoundError:
     print("FATAL: Model file not found at 'models/crop_recommendation_model.joblib'")
     model = None
@@ -50,15 +51,22 @@ async def recommend_crop(request: CropRecommendationRequest):
     try:
         # Create a pandas DataFrame from the request data
         # The column order MUST be the same as the one used for training
+        # Create a pandas DataFrame from the request data
+        # The column order MUST be the same as the one used for training
         input_data = pd.DataFrame([[
             request.N, request.P, request.K,
             request.temperature, request.humidity,
             request.ph, request.rainfall
         ]], columns=['N', 'P', 'K', 'temperature', 'humidity', 'ph', 'rainfall'])
 
+        print(f"Input data: {input_data.to_dict('records')[0]}")
+
         # Use the loaded model to make a prediction
         prediction = model.predict(input_data)
         recommended_crop = prediction[0]
+
+        print(f"Model prediction: {prediction}")
+        print(f"Recommended crop: {recommended_crop}")
 
         # Return the prediction in the response
         return CropRecommendationResponse(recommended_crop=recommended_crop)
@@ -74,5 +82,5 @@ async def root():
 
 # --- 7. Run the API server when the script is executed ---
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
+    port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)

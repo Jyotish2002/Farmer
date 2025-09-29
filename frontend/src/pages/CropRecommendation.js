@@ -121,8 +121,24 @@ const CropRecommendation = () => {
       };
       
       console.log('Frontend sending ML-ready payload:', payload);
+      console.log('Complete payload breakdown:', {
+        N: payload.N,
+        P: payload.P, 
+        K: payload.K,
+        temperature: payload.temperature,
+        humidity: payload.humidity,
+        ph: payload.ph,
+        rainfall: payload.rainfall
+      });
+      console.log('🌐 API URL:', axios.defaults.baseURL);
       const response = await axios.post('/api/crop-recommendation', payload);
       setRecommendation(response.data);
+      
+      // Log the prediction result with source info
+      console.log('🎯 Got prediction:', response.data.recommended_crop);
+      console.log('📊 Prediction source:', response.data.source);
+      console.log('🤖 Is Real ML:', response.data.isRealML);
+      
       toast.success(t('recommendationGenerated') || 'Crop recommendation generated!');
     } catch (error) {
       console.error('Crop recommendation error:', error);
