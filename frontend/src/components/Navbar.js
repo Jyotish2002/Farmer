@@ -22,12 +22,15 @@ const Navbar = () => {
     <nav className="bg-gradient-to-r from-green-600 to-green-700 shadow-lg border-b sticky top-0 z-10">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Left: App Name + Logo */}
-          <Link to="/dashboard" className="flex items-center space-x-2">
-            <div className="h-8 w-8 bg-yellow-400 rounded-lg flex items-center justify-center shadow-md">
-              <span className="text-green-800 font-bold text-sm">🌾</span>
+          {/* Left: Logo Only */}
+          <Link to="/dashboard" className="flex items-center">
+            <div className="h-10 w-10 bg-white rounded-lg flex items-center justify-center shadow-md overflow-hidden">
+              <img 
+                src="/logo192.png" 
+                alt="Logo" 
+                className="h-8 w-8 object-contain"
+              />
             </div>
-            <h1 className="text-xl font-bold text-white">{t('appName')}</h1>
           </Link>
 
           {/* Right: Refresh & Settings */}
