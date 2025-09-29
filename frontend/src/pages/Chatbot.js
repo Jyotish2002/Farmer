@@ -27,13 +27,26 @@ const Chatbot = () => {
   const [expertQuery, setExpertQuery] = useState('');
   const [isExpertRecording, setIsExpertRecording] = useState(false);
   const expertRecognitionRef = useRef(null);
-  const [detectedLanguage, setDetectedLanguage] = useState('auto');
+
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
+  const [voices, setVoices] = useState([]);
   const synthRef = useRef(window.speechSynthesis);
   const [speakingIndex, setSpeakingIndex] = useState(null);
   const isDemoMode = token === 'demo-jwt-token-123';
   const handleChatSubmitRef = useRef();
+
+  useEffect(() => {
+    const loadVoices = () => {
+      const availableVoices = synthRef.current.getVoices();
+      if (availableVoices.length > 0) {
+        setVoices(availableVoices);
+      }
+    };
+    
+    loadVoices();
+    synthRef.current.onvoiceschanged = loadVoices;
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -45,7 +58,8 @@ const Chatbot = () => {
     if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
+    recognition.lang = currentLanguage === 'malayalam' ? 'ml-IN' : 
+                      currentLanguage === 'hindi' ? 'hi-IN' : 'en-US';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
@@ -55,9 +69,7 @@ const Chatbot = () => {
         .join('')
         .trim();
       if (transcript) {
-        // detect language and set
-        const lang = detectLanguageFromText(transcript);
-        setDetectedLanguage(lang || 'auto');
+
         setChatMessage(transcript);
         // Auto-submit the transcribed message via handler ref, pass transcript override
         setTimeout(() => {
@@ -80,7 +92,8 @@ const Chatbot = () => {
 
     // Expert modal separate recognition (so user can record expert question independently)
     const expertRec = new SpeechRecognition();
-    expertRec.lang = 'en-US';
+    expertRec.lang = currentLanguage === 'malayalam' ? 'ml-IN' : 
+                    currentLanguage === 'hindi' ? 'hi-IN' : 'en-US';
     expertRec.interimResults = false;
     expertRec.maxAlternatives = 1;
     expertRec.onresult = (event) => {
@@ -101,26 +114,9 @@ const Chatbot = () => {
       try { expertRec.stop(); } catch(e) {}
       expertRecognitionRef.current = null;
     };
-  }, [t]);
+  }, [t, currentLanguage]);
 
   // Basic script-based language detection heuristic
-  const detectLanguageFromText = (text) => {
-    if (!text) return 'en';
-  // Devanagari (Hindi, Marathi, Nepali) U+0900 - U+097F
-  if (/[\u0900-\u097F]/.test(text)) return 'hi-IN';
-  // Bengali U+0980 - U+09FF
-  if (/[\u0980-\u09FF]/.test(text)) return 'bn-IN';
-  // Malayalam U+0D00 - U+0D7F
-  if (/[\u0D00-\u0D7F]/.test(text)) return 'ml-IN';
-  // Tamil U+0B80 - U+0BFF
-  if (/[\u0B80-\u0BFF]/.test(text)) return 'ta-IN';
-  // Telugu U+0C00 - U+0C7F
-  if (/[\u0C00-\u0C7F]/.test(text)) return 'te-IN';
-  // Kannada U+0C80 - U+0CFF
-  if (/[\u0C80-\u0CFF]/.test(text)) return 'kn-IN';
-    // Fallback to English
-    return 'en-US';
-  };
 
   // Start/Stop recognition
   const startRecording = () => {
@@ -130,7 +126,8 @@ const Chatbot = () => {
       return;
     }
     try {
-      recognition.lang = 'en-US'; // default; actual detection happens after transcript
+      recognition.lang = currentLanguage === 'malayalam' ? 'ml-IN' : 
+                        currentLanguage === 'hindi' ? 'hi-IN' : 'en-US';
       recognition.start();
       setIsRecording(true);
     } catch (e) {
@@ -157,7 +154,8 @@ const Chatbot = () => {
       return;
     }
     try {
-      rec.lang = 'en-US';
+      rec.lang = currentLanguage === 'malayalam' ? 'ml-IN' : 
+                currentLanguage === 'hindi' ? 'hi-IN' : 'en-US';
       rec.start();
       setIsExpertRecording(true);
     } catch (e) {
@@ -179,7 +177,7 @@ const Chatbot = () => {
 
   
 
-  const toggleSpeak = (index, text, lang = 'en-US') => {
+  const toggleSpeak = React.useCallback((index, text, lang = 'en-US') => {
     // If currently speaking this message, stop
     if (speakingIndex === index) {
       try { synthRef.current.cancel(); } catch(e) {}
@@ -193,13 +191,12 @@ const Chatbot = () => {
     // create utterance and speak (use same logic as speakText but keep control here)
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = lang;
-    const voices = synthRef.current.getVoices();
     const match = voices.find(v => v.lang && v.lang.startsWith(lang.split('-')[0]));
     if (match) utter.voice = match;
     utter.onend = () => setSpeakingIndex(null);
     utter.onerror = () => setSpeakingIndex(null);
     synthRef.current.speak(utter);
-  };
+  }, [speakingIndex, voices]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -324,11 +321,26 @@ const Chatbot = () => {
 
       // Remove typing indicator and add bot response
       setIsTyping(false);
-      setChatHistory(prev => [...prev, {
-        type: 'bot',
-        message: botResponse,
-        timestamp: new Date()
-      }]);
+      setChatHistory(prev => {
+        const newHistory = [...prev, {
+          type: 'bot',
+          message: botResponse,
+          timestamp: new Date()
+        }];
+        
+        // Auto-play speech for Malayalam responses
+        if (currentLanguage === 'malayalam') {
+          setTimeout(() => {
+            try {
+              toggleSpeak(newHistory.length - 1, botResponse, 'ml-IN');
+            } catch (e) {
+              console.warn('Auto-speech failed:', e);
+            }
+          }, 500);
+        }
+        
+        return newHistory;
+      });
 
     } catch (error) {
       console.error('Chatbot error:', error);
@@ -342,7 +354,7 @@ const Chatbot = () => {
     } finally {
       setLoading(false);
     }
-  }, [chatMessage, loading, isDemoMode, user, t, currentLanguage]);
+  }, [chatMessage, loading, isDemoMode, user, t, currentLanguage, toggleSpeak]);
 
   const handleSuggestionClick = (suggestion) => {
     setChatMessage(suggestion);
@@ -388,7 +400,11 @@ const Chatbot = () => {
 
       setChatHistory(prev => [...prev, { type: 'bot', message: expertReply, timestamp: new Date(), meta: { fromExpert: true } }]);
       // Auto-play expert reply audio for accessibility
-      try { toggleSpeak(chatHistory.length + 1, expertReply, detectedLanguage === 'auto' ? 'en-US' : detectedLanguage); } catch(e) {}
+      try { 
+        const speechLang = currentLanguage === 'malayalam' ? 'ml-IN' : 
+                          currentLanguage === 'hindi' ? 'hi-IN' : 'en-US';
+        toggleSpeak(chatHistory.length + 1, expertReply, speechLang); 
+      } catch(e) {}
     } catch (err) {
       console.error('Expert API error', err);
       setChatHistory(prev => [...prev, { type: 'bot', message: t('expertError') || 'Unable to reach expert right now. Please try again later.', timestamp: new Date() }]);
@@ -531,7 +547,11 @@ const Chatbot = () => {
                       {chat.type === 'bot' && (
                         <div className="mt-2 flex items-center space-x-2">
                           <button
-                            onClick={() => toggleSpeak(index, chat.message, detectedLanguage === 'auto' ? 'en-US' : detectedLanguage)}
+                            onClick={() => {
+                              const speechLang = currentLanguage === 'malayalam' ? 'ml-IN' : 
+                                                currentLanguage === 'hindi' ? 'hi-IN' : 'en-US';
+                              toggleSpeak(index, chat.message, speechLang);
+                            }}
                             className={`text-xs px-2 py-1 rounded-md ${speakingIndex === index ? 'bg-red-100 hover:bg-red-200' : 'bg-gray-100 hover:bg-gray-200'}`}
                             title={speakingIndex === index ? (t('stop') || 'Stop') : (t('playReply') || 'Play reply')}
                           >
